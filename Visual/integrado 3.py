@@ -21,6 +21,8 @@ mp_drawing_styles = mp.tasks.vision.drawing_styles
 
 base_keypoints=[2,5,9,13,17]
 puntas_keypoints=[4,8,12,16,20]
+ancho = [5,17]
+
 
 def draw_landmarks_on_image(rgb_image, detection_result):
     hand_landmarks_list = detection_result.hand_landmarks 
@@ -41,6 +43,8 @@ def draw_landmarks_on_image(rgb_image, detection_result):
         
         coordenadas_BD=[]
         coordenadas_PD=[]
+        coordenadas_Ancho=[]
+
         for i in base_keypoints:
             x= int(hand_landmarks[i].x*width) #list comprehension
             y= int(hand_landmarks[i].y*height)
@@ -50,19 +54,32 @@ def draw_landmarks_on_image(rgb_image, detection_result):
             x= int(hand_landmarks[i].x*width)
             y= int(hand_landmarks[i].y*height)
             coordenadas_PD.append((x, y))
+        for i in ancho:
+            x= int(hand_landmarks[i].x*width)
+            y= int(hand_landmarks[i].y*height)
+            coordenadas_Ancho.append((x, y))
             
         coordenadas_BD=np.array(coordenadas_BD)
         coordenadas_PD=np.array(coordenadas_PD)
+        coordenadas_Ancho=np.array(coordenadas_Ancho)
         
         Distancia_marcadores= np.linalg.norm(coordenadas_BD-coordenadas_PD, axis=1)  
-        Estado_dedos= Distancia_marcadores>60
+        Ancho_mano= np.linalg.norm(coordenadas_Ancho[0]-coordenadas_Ancho[1])
+
+        umbral = 0.6 * Ancho_mano
+        # Si está cerca a la base del dedo o si la punta del dedo está por abajo de la base del dedo.
+        Estado_dedos = ((Distancia_marcadores<umbral) | (coordenadas_PD[:,1]>coordenadas_BD[:,1]))
+
+        # Para el pulgar que necesita un umbral más grande
+        Estado_dedos[0] = Distancia_marcadores[0] < (0.7 * Ancho_mano)
         
         cadena_datos=[]
         for i in Estado_dedos:
-            if i==True:
+            if i==False:
                 cadena_datos.append(1)
             else:
                 cadena_datos.append(0)
+                
 
         comando=""
         for index in range(5):
